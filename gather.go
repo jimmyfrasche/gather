@@ -30,6 +30,13 @@
 //with no shell escaping.
 //If you have wonky file names use the -print0 flag, as with find(1).
 //
+//By default, gather(1) just prints the files with no concern for two
+//files in different package directories having the same name.
+//For a script that copies files from multiple directories into
+//one directory, this can cause hard to track down failures.
+//The -fail-on-dup flag will cause gather(1) to fail if two files
+//have the same name.
+//
 //EXAMPLES
 //
 //List all non-dot files in the package contained in the current directory,
@@ -38,8 +45,9 @@
 //	gather -rel=$GOPATH
 //
 //List all css files, dot or not, in the transitive closure of the dependencies
-//of the package in the current directory, relative to the current directory
-//	gather -. -rel=. "*.css"
+//of the package in the current directory, relative to the current directory,
+//while failing if two files share the same name.
+//	gather -. -fail-on-dup -rel=. "*.css"
 //
 //List the absolute path of all non-dot .go files not matching "doc*.go"
 //in some/package and all of it dependencies, including standard library dependencies.
@@ -69,6 +77,7 @@ var (
 	rel     = flag.String("rel", "", "print all results relative to a given directory")
 	print0  = flag.Bool("print0", false, "separate filenames by NUL")
 	dot     = flag.Bool(".", false, "include dot files")
+	faildup = flag.Bool("fail-on-dup", false, "fail if two files have the same name")
 )
 
 func importArgs(tags, imports []string) (goutil.Packages, error) {
@@ -159,10 +168,15 @@ func format(paths []string, f pathFormatter) ([]string, error) {
 	return out, nil
 }
 
-func print(ms []string, sep string) {
-	for _, m := range ms {
-		fmt.Printf("%s%s", m, sep)
+type dupcheck map[string]string
+
+func (d dupcheck) push(p string) error {
+	b := filepath.Base(p)
+	if o, ok := d[b]; ok {
+		return fmt.Errorf("duplicate file %s found at\n\t%s\npreviously\n\t%s", b, p, o)
 	}
+	d[b] = p
+	return nil
 }
 
 //Usage: %name $flags import-path*
@@ -209,6 +223,7 @@ func main() {
 		sep = string([]rune{0})
 	}
 
+	dups := dupcheck{}
 	for _, p := range ps {
 		//find matching files
 		ms, err := match(p.Build.Dir, pat)
@@ -236,6 +251,15 @@ func main() {
 			log.Fatalln(err)
 		}
 
-		print(ms, sep)
+		//print formatted files, error if duplicate and we're checking for them
+		for _, m := range ms {
+			if *faildup {
+				err = dups.push(m)
+				if *faildup && err != nil {
+					log.Fatalln(err)
+				}
+			}
+			fmt.Printf("%s%s", m, sep)
+		}
 	}
 }

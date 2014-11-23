@@ -13,6 +13,7 @@ in the transitive closure of a Go package's dependencies.
 .IR rel ]
 .RB [ \-print0 ]
 .RB [ \-. ]
+.RB [ \-fail-on-dup ]
 .B $flags
 .B import\-path*
 .SH "DESCRIPTION"
@@ -49,7 +50,7 @@ To not scan the dependencies, use the
 flag. 
 .PP
 Files are matched by globs as per godoc path/Filepath Match. 
-The default glob is *, but to specify import paths you must first specify the pattern. 
+The default glob is "*", but to specify import paths you must first specify the pattern. 
 By default, dotfiles are excluded. 
 To include dotfiles, use the 
 .B \-.
@@ -71,6 +72,16 @@ prints each matched file on its own line, with no shell escaping.
 If you have wonky file names use the 
 .B \-print0
 flag, as with find(1). 
+.PP
+By default, 
+.BR gather (1)
+just prints the files with no concern for two files in different package directories having the same name. 
+For a script that copies files from multiple directories into one directory, this can cause hard to track down failures. 
+The 
+.B \-fail-on-dup
+flag will cause 
+.BR gather (1)
+to fail if two files have the same name. 
 .SH "OPTIONS"
 .TP
 .BR "\-stdlib "
@@ -90,6 +101,9 @@ separate filenames by NUL
 .TP
 .BR "\-. "
 include dot files 
+.TP
+.BR "\-fail-on-dup "
+fail if two files have the same name 
 .SH "EXAMPLES"
 List all non\-dot files in the package contained in the current directory, and all of its non\-standard library dependencies, relative to $GOPATH (assumes a single directory in $GOPATH) 
 .PP
@@ -99,10 +113,10 @@ gather \-rel=$GOPATH
 .sp
 .RE
 .PP
-List all css files, dot or not, in the transitive closure of the dependencies of the package in the current directory, relative to the current directory 
+List all css files, dot or not, in the transitive closure of the dependencies of the package in the current directory, relative to the current directory, while failing if two files share the same name. 
 .PP
 .RS
-gather \-. \-rel=. "*.css"
+gather \-. \-fail\-on\-dup \-rel=. "*.css"
 .sp 0
 .sp
 .RE

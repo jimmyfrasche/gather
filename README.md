@@ -43,6 +43,13 @@ By default, gather(1) prints each matched file on its own line,
 with no shell escaping.
 If you have wonky file names use the -print0 flag, as with find(1).
 
+By default, gather(1) just prints the files with no concern for two
+files in different package directories having the same name.
+For a script that copies files from multiple directories into
+one directory, this can cause hard to track down failures.
+The -fail-on-dup flag will cause gather(1) to fail if two files
+have the same name.
+
 ##EXAMPLES
 List all non-dot files in the package contained in the current directory,
 and all of its non-standard library dependencies, relative to $GOPATH
@@ -53,10 +60,11 @@ gather -rel=$GOPATH
 ```
 
 List all css files, dot or not, in the transitive closure of the dependencies
-of the package in the current directory, relative to the current directory
+of the package in the current directory, relative to the current directory,
+while failing if two files share the same name.
 
 ```
-gather -. -rel=. "*.css"
+gather -. -fail-on-dup -rel=. "*.css"
 ```
 
 List the absolute path of all non-dot .go files not matching "doc*.go"
